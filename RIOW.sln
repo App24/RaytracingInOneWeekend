@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32126.317
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RIOW", "RIOW\RIOW.csproj", "{4872A2C4-2837-47AF-9382-45DC42156FFC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4872A2C4-2837-47AF-9382-45DC42156FFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4872A2C4-2837-47AF-9382-45DC42156FFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4872A2C4-2837-47AF-9382-45DC42156FFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4872A2C4-2837-47AF-9382-45DC42156FFC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {848EC827-273F-45F3-8FB5-A0AB5E6C4505}
+	EndGlobalSection
+EndGlobal
