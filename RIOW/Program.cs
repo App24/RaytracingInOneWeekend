@@ -16,8 +16,8 @@ namespace RIOW
     {
         private const string FilePath = "image.bmp";
 
-        private const int ImageWidth = 1280;
-        private const int ImageHeight = 720;
+        private const int ImageWidth = 800;
+        private const int ImageHeight = 800;
         private const float AspectRatio = ImageWidth / (float)ImageHeight;
 
         private const int ThreadCount = 12;
@@ -28,7 +28,7 @@ namespace RIOW
         private static List<int> remainingLines;
         private static int previousCount;
 
-        private static Vector3 RayColor(Ray ray, Vector3 backgroundColor, HitObject world, int depth, Utils utils)
+        private static Vector3 RayColor(Ray originalRay, Ray ray, Vector3 backgroundColor, Vector3 ambientColor, HitObject world, int depth, Utils utils)
         {
             if (depth <= 0)
                 return Vector3.Zero;
@@ -36,7 +36,11 @@ namespace RIOW
             HitRecord record = new HitRecord();
             if (!world.Hit(ray, 0.001f, Utils.Infinity, ref record, utils))
             {
+                if (originalRay.Equals(ray))
+                {
                 return backgroundColor;
+                }
+                    return Vector3.Max(backgroundColor, ambientColor);
                 Vector3 unitDirection = Vector3.Normalize(ray.Direction);
                 var t = 0.5f * (unitDirection.Y + 1f);
                 return (1f - t) * new Vector3(1, 1, 1) + t * new Vector3(0.5f, 0.7f, 1.0f);
@@ -51,7 +55,7 @@ namespace RIOW
                 return emitted;
             }
 
-            return emitted + attenuation * RayColor(scattered, backgroundColor, world, depth - 1, utils);
+            return emitted + attenuation * RayColor(originalRay, scattered, backgroundColor, ambientColor, world, depth - 1, utils);
         }
 
         private static void PrintLinesRemaining()
@@ -85,7 +89,7 @@ namespace RIOW
             }
         }
 
-        private static void Process(byte[] buffer, int depth, HitObject world, Camera camera, Vector3 backgroundColor)
+        private static void Process(byte[] buffer, int depth, HitObject world, Camera camera, Vector3 backgroundColor, Vector3 ambientColor)
         {
             Utils utils = new Utils();
 
@@ -109,7 +113,7 @@ namespace RIOW
                         float v = (float)(line + utils.random.NextDouble()) / (ImageHeight - 1);
 
                         Ray ray = camera.GetRay(u, v, utils);
-                        pixelColor += RayColor(ray, backgroundColor, world, MaxDepth, utils);
+                        pixelColor += RayColor(ray, ray, backgroundColor, ambientColor, world, MaxDepth, utils);
                     }
 
                     float scale = 1f / SamplesPerPixel;
@@ -144,17 +148,18 @@ namespace RIOW
                     float chooseMat = utils.RandomFloat();
                     Vector3 center = new Vector3(a + 0.9f * utils.RandomFloat(), 0.2f, b + 0.9f * utils.RandomFloat());
 
-                    if((center-new Vector3(4, 0.2f,0)).Length() > 0.9f)
+                    if ((center - new Vector3(4, 0.2f, 0)).Length() > 0.9f)
                     {
                         Material material;
 
-                        if(chooseMat < 0.8f)
+                        if (chooseMat < 0.8f)
                         {
                             Vector3 color = utils.RandomVector3() * utils.RandomVector3();
-                            material=new Lambertian(color);
+                            material = new Lambertian(color);
                             Vector3 center2 = center + new Vector3(0, utils.RandomFloat(0f, 0.5f), 0);
                             world.Add(new MovingSphere(center, center2, 0, 1, 0.2f, material));
-                        }else if(chooseMat < 0.95)
+                        }
+                        else if (chooseMat < 0.95)
                         {
                             Vector3 color = utils.RandomVector3(0.5f, 1);
                             float fuzz = utils.RandomFloat(0, 0.5f);
@@ -197,8 +202,8 @@ namespace RIOW
 
             var perText = new NoiseTexture(4);
 
-            world.Add(new Sphere(new Vector3(0,-1000,0), 1000, new Lambertian(perText)));
-            world.Add(new Sphere(new Vector3(0,2,0), 2, new Lambertian(perText)));
+            world.Add(new Sphere(new Vector3(0, -1000, 0), 1000, new Lambertian(perText)));
+            world.Add(new Sphere(new Vector3(0, 2, 0), 2, new Lambertian(perText)));
 
             return world;
         }
@@ -209,6 +214,10 @@ namespace RIOW
 
             world.Add(new Sphere(Vector3.Zero, 2, new Lambertian(new ImageTexture("earthmap.jpg"))));
 
+            var light = new DiffuseLight(new Vector3(10));
+
+            world.Add(new Sphere(new Vector3(20, 0, -10), 5, light));
+
             return world;
         }
 
@@ -216,14 +225,14 @@ namespace RIOW
         {
             HitObjectList world = new HitObjectList();
 
-            var perText=new NoiseTexture(4);
+            var perText = new NoiseTexture(4);
 
             world.Add(new Sphere(new Vector3(0, -1000, 0), 1000, new Lambertian(perText)));
             world.Add(new Sphere(new Vector3(0, 2, 0), 2, new Lambertian(perText)));
 
             var diffLight = new DiffuseLight(new Vector3(4, 4, 4));
             world.Add(new XYRect(3, 5, 1, 3, -2, diffLight));
-            world.Add(new Sphere(new Vector3(0, 8, 0), 2, diffLight));
+            //world.Add(new Sphere(new Vector3(0, 8, 0), 2, diffLight));
 
             return world;
         }
@@ -249,11 +258,11 @@ namespace RIOW
             box1 = new Translate(box1, new Vector3(265, 0, 295));
 
             HitObject box2 = new Box(new Vector3(0, 0, 0), new Vector3(165, 165, 165), white);
-            box2=new RotateY(box2, -18);
+            box2 = new RotateY(box2, -18);
             box2 = new Translate(box2, new Vector3(130, 0, 65));
 
             world.Add(new ConstantMedium(box1, 0.01f, new Vector3()));
-            world.Add(new ConstantMedium(box2, 0.01f, new Vector3(1,1,1)));
+            world.Add(new ConstantMedium(box2, 0.01f, new Vector3(1, 1, 1)));
 
             return world;
         }
@@ -330,20 +339,22 @@ namespace RIOW
                 remainingLines.Add(i);
             }
 
-            Vector3 lookfrom=Vector3.Zero;
-            Vector3 lookat=Vector3.Zero;
-            float vfov=40;
+            Vector3 lookfrom = Vector3.Zero;
+            Vector3 lookat = Vector3.Zero;
+            float vfov = 40;
             float aperture = 0f;
 
             HitObjectList world = new HitObjectList();
 
             Vector3 backgroundColor = Vector3.Zero;
+            Vector3 ambientColor = Vector3.Zero;
 
-            switch (5)
+            switch (4)
             {
                 case 1:
                     world = RandomScene();
                     backgroundColor = new Vector3(.7f, .8f, 1f);
+                    ambientColor = new Vector3(.7f, .8f, 1f);
                     lookfrom = new Vector3(13, 2, 3);
                     lookat = new Vector3(0, 0, 0);
                     vfov = 20;
@@ -352,6 +363,7 @@ namespace RIOW
                 case 2:
                     world = TwoSpheres();
                     backgroundColor = new Vector3(.7f, .8f, 1f);
+                    ambientColor = new Vector3(.7f, .8f, 1f);
                     lookfrom = new Vector3(13, 2, 3);
                     lookat = Vector3.Zero;
                     vfov = 20;
@@ -359,13 +371,17 @@ namespace RIOW
                 case 3:
                     world = TwoPerlinSpheres();
                     backgroundColor = new Vector3(.7f, .8f, 1f);
+                    ambientColor = new Vector3(.7f, .8f, 1f);
                     lookfrom = new Vector3(13, 2, 3);
                     lookat = Vector3.Zero;
                     vfov = 20;
                     break;
                 case 4:
                     world = Earth();
-                    backgroundColor = new Vector3(.7f, .8f, 1f);
+                    //backgroundColor = new Vector3(.7f, .8f, 1f);
+                    SamplesPerPixel = 400;
+                    backgroundColor = new Vector3(0f);
+                    ambientColor= new Vector3(0.002f);
                     lookfrom = new Vector3(13, 2, 3);
                     lookat = Vector3.Zero;
                     vfov = 20;
@@ -373,6 +389,7 @@ namespace RIOW
                 case 5:
                     world = SimpleLight();
                     backgroundColor = new Vector3(0, 0, 0);
+                    ambientColor = new Vector3(0, 0, 0);
                     SamplesPerPixel = 400;
                     lookfrom = new Vector3(26, 3, 6);
                     lookat = new Vector3(0, 2, 0);
@@ -382,6 +399,7 @@ namespace RIOW
                     world = CornellBox();
                     SamplesPerPixel = 400;
                     backgroundColor = new Vector3(0, 0, 0);
+                    ambientColor = new Vector3(0, 0, 0);
                     //backgroundColor = new Vector3(.7f, .8f, 1f);
                     lookfrom = new Vector3(278, 278, -800);
                     lookat = new Vector3(278, 278, 0);
@@ -392,6 +410,7 @@ namespace RIOW
                     world = FinalScene();
                     SamplesPerPixel = 10000;
                     backgroundColor = new Vector3(0, 0, 0);
+                    ambientColor = new Vector3(0, 0, 0);
                     //backgroundColor = new Vector3(.7f, .8f, 1f);
                     lookfrom = new Vector3(478, 278, -600);
                     lookat = new Vector3(278, 278, 0);
@@ -415,7 +434,7 @@ namespace RIOW
 
             for (int i = 0; i < ThreadCount; i++)
             {
-                actions[i] = () => Process(buffer, depth, world, cam, backgroundColor);
+                actions[i] = () => Process(buffer, depth, world, cam, backgroundColor, ambientColor);
             }
 
             actions[ThreadCount] = () => PrintLinesRemaining();
@@ -441,7 +460,7 @@ namespace RIOW
                 {
                     int offset = ((j * ImageWidth) + i) * depth;
 
-                    byte b=buffer[offset];
+                    byte b = buffer[offset];
 
                     buffer[offset] = buffer[offset + 2];
                     buffer[offset + 2] = b;
